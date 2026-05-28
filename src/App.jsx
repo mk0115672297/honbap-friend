@@ -76,10 +76,8 @@ function RestaurantsScreen({ onBack }) {
   useEffect(() => { fetchRests(); }, []);
   return (
     <div style={{
-      position:"fixed", top:0, left:0, right:0, bottom:0,
       display:"flex", flexDirection:"column",
-      maxWidth:420, margin:"0 auto",
-      background:"#fff", zIndex:100,
+      minHeight:"100vh", background:"#fff",
     }}>
       <div style={{ padding:"0.85rem 1rem", borderBottom:"0.5px solid #e5e5e5", display:"flex", alignItems:"center", gap:10, flexShrink:0 }}>
         <button onClick={onBack} style={{ background:"none", border:"none", cursor:"pointer", fontSize:20, color:"#888", padding:0, lineHeight:1 }}>←</button>
@@ -474,10 +472,8 @@ function DiaryScreen({ char, entry, entries, onReset }) {
   useEffect(() => { fetchRests(); }, []);
   return (
     <div style={{
-      position:"fixed", top:0, left:0, right:0, bottom:0,
       display:"flex", flexDirection:"column",
-      maxWidth:420, margin:"0 auto",
-      background:"#fff", zIndex:100,
+      minHeight:"100vh", background:"#fff",
     }}>
       <div style={{ padding:"0.85rem 1rem", borderBottom:"0.5px solid #e5e5e5", display:"flex", alignItems:"center", gap:10, flexShrink:0 }}>
         <button onClick={onReset} style={{ background:"none", border:"none", cursor:"pointer", fontSize:20, color:"#888", padding:0 }}>←</button>
