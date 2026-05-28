@@ -72,7 +72,7 @@ function initMap() {
         srcDoc={html}
         style={{ width:"100%", height:"100%", border:"none", display:"block" }}
         title="kakao-map"
-        sandbox="allow-scripts allow-same-origin"
+
       />
     </div>
   )
