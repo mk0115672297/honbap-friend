@@ -310,24 +310,36 @@ function TypingDots() {
 
 // ── 채팅 화면 ──────────────────────────────────────────────────────────────
 function ChatScreen({ char, imgB64, imgPreview, onEnd }) {
-  const [msgs, setMsgs]           = useState([]);
-  const [history, setHistory]     = useState([]);
-  const [input, setInput]         = useState("");
-  const [stream, setStream]       = useState("");
-  const [busy, setBusy]           = useState(false);
+  const [msgs, setMsgs]               = useState([]);
+  const [history, setHistory]         = useState([]);
+  const [input, setInput]             = useState("");
+  const [stream, setStream]           = useState("");
+  const [busy, setBusy]               = useState(false);
   const [showUpgrade, setShowUpgrade] = useState(false);
-  const [msgCount, setMsgCount]   = useState(getTotalMsgs);
+  const [msgCount, setMsgCount]       = useState(getTotalMsgs);
+  const [chatH, setChatH]             = useState(window.innerHeight);
   const chatEndRef = useRef(null);
   const inputRef   = useRef(null);
+
+  // ✅ visualViewport로 키보드 높이 감지 → 채팅창 높이 동적 조정
+  useEffect(() => {
+    const vv = window.visualViewport;
+    const update = () => {
+      const h = vv ? vv.height : window.innerHeight;
+      setChatH(h);
+      setTimeout(() => chatEndRef.current?.scrollIntoView({ block:"end" }), 50);
+    };
+    vv?.addEventListener("resize", update);
+    vv?.addEventListener("scroll", update);
+    return () => { vv?.removeEventListener("resize", update); vv?.removeEventListener("scroll", update); };
+  }, []);
+
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior:"smooth", block:"end" });
   }, [msgs, stream, showUpgrade]);
 
-  // 입력창 포커스 시 스크롤 유지
   const handleInputFocus = () => {
-    setTimeout(() => {
-      chatEndRef.current?.scrollIntoView({ behavior:"smooth", block:"end" });
-    }, 300);
+    setTimeout(() => chatEndRef.current?.scrollIntoView({ block:"end" }), 300);
   };
   useEffect(() => {
     const userContent = imgB64
@@ -368,11 +380,14 @@ function ChatScreen({ char, imgB64, imgPreview, onEnd }) {
   }, [input, busy, history, char]);
   return (
     <div style={{
-      position:"fixed", top:0, left:0, right:0, bottom:0,
+      position:"fixed", top:0, left:0, right:0,
+      height: chatH,
       display:"flex", flexDirection:"column",
       maxWidth:420, margin:"0 auto",
       background:"#fff", zIndex:100,
+      overflow:"hidden",
     }}>
+      {/* ✅ 상단바 고정 */}
       <div style={{ padding:"0.7rem 1rem", borderBottom:"0.5px solid #e5e5e5", display:"flex", alignItems:"center", justifyContent:"space-between", flexShrink:0 }}>
         <div style={{ display:"flex", alignItems:"center", gap:10 }}>
           <div style={{ flexShrink:0 }}><CharacterPortrait id={char.id} size={42} /></div>
