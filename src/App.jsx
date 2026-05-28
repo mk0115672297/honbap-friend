@@ -85,7 +85,7 @@ function RestaurantsScreen({ onBack }) {
         <button onClick={onBack} style={{ background:"none", border:"none", cursor:"pointer", fontSize:20, color:"#888", padding:0, lineHeight:1 }}>←</button>
         <div>
           <h2 style={{ fontSize:16, fontWeight:500, margin:0 }}>📍 근처 혼밥 맛집</h2>
-          <div style={{ fontSize:11, color:"#bbb", marginTop:1 }}>1인석 · 혼밥 친화 식당</div>
+          <div style={{ fontSize:11, color:"#bbb", marginTop:1 }}>카카오맵 · 현재 위치 기반</div>
         </div>
       </div>
       <div style={{ flex:1, overflowY:"auto", padding:"1rem" }}>
