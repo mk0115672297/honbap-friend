@@ -75,7 +75,7 @@ function RestaurantsScreen({ onBack }) {
   const { restaurants, loading, error, fetch: fetchRests } = useRestaurants();
   useEffect(() => { fetchRests(); }, []);
   return (
-    <div style={{ display:"flex", flexDirection:"column", height:"100vh", maxHeight:700 }}>
+    <div style={{ display:"flex", flexDirection:"column", height:"100dvh", maxHeight:700 }}>
       <div style={{ padding:"0.85rem 1rem", borderBottom:"0.5px solid #e5e5e5", display:"flex", alignItems:"center", gap:10, flexShrink:0 }}>
         <button onClick={onBack} style={{ background:"none", border:"none", cursor:"pointer", fontSize:20, color:"#888", padding:0, lineHeight:1 }}>←</button>
         <div>
@@ -314,7 +314,16 @@ function ChatScreen({ char, imgB64, imgPreview, onEnd }) {
   const [msgCount, setMsgCount]   = useState(getTotalMsgs);
   const chatEndRef = useRef(null);
   const inputRef   = useRef(null);
-  useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior:"smooth" }); }, [msgs, stream]);
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior:"smooth", block:"end" });
+  }, [msgs, stream, showUpgrade]);
+
+  // 입력창 포커스 시 스크롤 유지
+  const handleInputFocus = () => {
+    setTimeout(() => {
+      chatEndRef.current?.scrollIntoView({ behavior:"smooth", block:"end" });
+    }, 300);
+  };
   useEffect(() => {
     const userContent = imgB64
       ? [{ type:"image", source:{ type:"base64", media_type:"image/jpeg", data:imgB64 } }, { type:"text", text:"밥 먹으려고 해! 이게 오늘 내 밥이야." }]
@@ -376,7 +385,7 @@ function ChatScreen({ char, imgB64, imgPreview, onEnd }) {
           <span style={{ fontSize:11, color:"#888" }}>오늘의 식사 🍽️</span>
         </div>
       )}
-      <div style={{ flex:1, overflowY:"auto", padding:"1rem", display:"flex", flexDirection:"column", gap:10 }}>
+      <div style={{ flex:1, overflowY:"auto", padding:"1rem 1rem 1.5rem", display:"flex", flexDirection:"column", gap:10 }}>
         {msgs.length === 0 && busy && <div style={{ display:"flex", gap:8, alignItems:"flex-end" }}><Avatar char={char}/><TypingDots/></div>}
         {msgs.map((m,i) => m.role==="ai"
           ? <div key={i} style={{ display:"flex", gap:8, alignItems:"flex-end" }}>
@@ -421,6 +430,7 @@ function ChatScreen({ char, imgB64, imgPreview, onEnd }) {
       )}
       <div style={{ padding:"0.7rem 1rem", borderTop:"0.5px solid #e5e5e5", display:"flex", gap:8, flexShrink:0 }}>
         <input ref={inputRef} value={input} onChange={e => setInput(e.target.value)}
+          onFocus={handleInputFocus}
           onKeyDown={e => e.key==="Enter" && !e.shiftKey && sendMsg()}
           placeholder={showUpgrade ? "프리미엄으로 업그레이드하세요 ✨" : busy ? `${char.name} 답변 중...` : "메시지를 입력하세요"}
           disabled={busy || showUpgrade}
