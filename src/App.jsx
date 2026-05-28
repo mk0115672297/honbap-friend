@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useRestaurants } from "./hooks/useRestaurants";
 import RestaurantCard from "./components/RestaurantCard";
-import CharacterPortrait from "./components/CharacterPortrait";
+import CharacterPortrait from "./components/CharacterPortrait"
+import KakaoMap from "./components/KakaoMap";
 
 // ── 비용 절감 설정 ─────────────────────────────────────────────────────────
 const FREE_DAILY_LIMIT = 2
@@ -42,7 +43,9 @@ const CHARS = [
 
 // ── Claude API (Haiku + 프롬프트 캐싱) ────────────────────────────────────
 async function callClaude(system, messages, onChunk, model = CHAT_MODEL) {
-  const res = await fetch("/api/claude/v1/messages", {
+  const res = await fetch(import.meta.env.VITE_SUPABASE_URL
+    ? `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/claude-proxy`
+    : "/api/claude/v1/messages", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -114,7 +117,13 @@ function RestaurantsScreen({ onBack }) {
         )}
         {!loading && restaurants.length > 0 && (
           <div>
-            <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:10 }}>
+            {/* ✅ 카카오맵 지도 표시 */}
+            <KakaoMap
+              restaurants={restaurants}
+              center={location}
+              height={220}
+            />
+            <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", margin:"10px 0 8px" }}>
               <span style={{ fontSize:12, color:"#888" }}>현재 위치 기준 가까운 순</span>
               <span style={{ fontSize:11, padding:"2px 9px", borderRadius:999, background:"#E1F5EE", color:"#0F6E56", fontWeight:500, border:"0.5px solid #5DCAA5" }}>
                 {restaurants.length}곳 발견
@@ -490,7 +499,9 @@ export default function App() {
     let summary = "오늘도 맛있는 한 끼 🍚";
     try {
       const convo = msgs.map(m => `${m.role==="ai" ? char.name : "나"}: ${m.text}`).join("\n");
-      const res = await fetch("/api/claude/v1/messages", {
+      const res = await fetch(import.meta.env.VITE_SUPABASE_URL
+    ? `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/claude-proxy`
+    : "/api/claude/v1/messages", {
         method:"POST", headers:{"Content-Type":"application/json"},
         body: JSON.stringify({ model:DIARY_MODEL, max_tokens:80,
           messages:[{ role:"user", content:`다음 식사 대화를 보고 따뜻하고 감성적인 식사 일기를 40자 이내로 한 줄로 써줘. 이모지 한 개 포함.\n\n${convo}` }] })
