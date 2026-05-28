@@ -5,23 +5,19 @@ import CharacterPortrait from "./components/CharacterPortrait"
 import KakaoMap from "./components/KakaoMap";
 
 // ── 비용 절감 설정 ─────────────────────────────────────────────────────────
-const FREE_DAILY_LIMIT = 2
+const FREE_MSG_LIMIT = 5          // 무료 대화 횟수 (누적)
 const CHAT_MODEL  = "claude-haiku-4-5-20251001"
 const DIARY_MODEL = "claude-haiku-4-5-20251001"
 
-function getUsedToday() {
-  try {
-    const d = JSON.parse(localStorage.getItem("honbap_usage") || "{}")
-    return d[new Date().toISOString().slice(0,10)] || 0
-  } catch { return 0 }
+function getTotalMsgs() {
+  try { return parseInt(localStorage.getItem("honbap_total_msgs") || "0") } 
+  catch { return 0 }
 }
-function incrementUsage() {
+function incrementTotalMsgs() {
   try {
-    const today = new Date().toISOString().slice(0,10)
-    const d = JSON.parse(localStorage.getItem("honbap_usage") || "{}")
-    const updated = { [today]: (d[today] || 0) + 1 }
-    localStorage.setItem("honbap_usage", JSON.stringify(updated))
-    return updated[today]
+    const n = getTotalMsgs() + 1
+    localStorage.setItem("honbap_total_msgs", String(n))
+    return n
   } catch { return 1 }
 }
 
@@ -161,9 +157,10 @@ function RestaurantsScreen({ onBack }) {
 }
 
 // ── 캐릭터 선택 화면 ───────────────────────────────────────────────────────
-function SelectScreen({ onSelect, onRestaurants, usedToday }) {
-  const remaining = Math.max(0, FREE_DAILY_LIMIT - usedToday)
-  const isLimited = usedToday >= FREE_DAILY_LIMIT
+function SelectScreen({ onSelect, onRestaurants }) {
+  const usedMsgs  = getTotalMsgs()
+  const remaining = Math.max(0, FREE_MSG_LIMIT - usedMsgs)
+  const isLimited = usedMsgs >= FREE_MSG_LIMIT
 
   return (
     <div style={{ padding:"1.25rem 1rem" }}>
@@ -173,82 +170,67 @@ function SelectScreen({ onSelect, onRestaurants, usedToday }) {
         <p style={{ fontSize:12, color:"#888", margin:0 }}>AI 친구와 함께하는 즐거운 혼밥</p>
       </div>
 
-      {/* 근처 맛집 찾기 카드 */}
       <div onClick={onRestaurants}
         style={{ background:"linear-gradient(135deg, #1D9E75 0%, #0F6E56 100%)", borderRadius:14, padding:"1rem 1.25rem", marginBottom:"1rem", cursor:"pointer", display:"flex", alignItems:"center", gap:12, transition:"opacity 0.15s" }}
         onMouseEnter={e => e.currentTarget.style.opacity="0.9"}
         onMouseLeave={e => e.currentTarget.style.opacity="1"}>
-        <div style={{ width:46, height:46, borderRadius:12, background:"rgba(255,255,255,0.2)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:24, flexShrink:0 }}>
-          📍
-        </div>
+        <div style={{ width:46, height:46, borderRadius:12, background:"rgba(255,255,255,0.2)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:24, flexShrink:0 }}>📍</div>
         <div style={{ flex:1 }}>
           <div style={{ fontSize:15, fontWeight:500, color:"#fff", marginBottom:2 }}>근처 혼밥 맛집 찾기</div>
-          <div style={{ fontSize:12, color:"rgba(255,255,255,0.75)" }}>1인석 · 혼밥 친화 식당 · 위치 기반</div>
+          <div style={{ fontSize:12, color:"rgba(255,255,255,0.75)" }}>카카오맵 · 현재 위치 기반</div>
         </div>
         <span style={{ color:"rgba(255,255,255,0.6)", fontSize:18 }}>›</span>
       </div>
 
-      {/* 구분선 */}
       <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:"1rem" }}>
         <div style={{ flex:1, height:"0.5px", background:"#e5e5e5" }} />
         <span style={{ fontSize:11, color:"#bbb", whiteSpace:"nowrap" }}>AI 친구와 함께 식사</span>
         <div style={{ flex:1, height:"0.5px", background:"#e5e5e5" }} />
       </div>
 
-      {/* 남은 식사 횟수 */}
       <div style={{ display:"flex", justifyContent:"center", marginBottom:"0.9rem" }}>
-        <div style={{ display:"flex", alignItems:"center", gap:6, background:isLimited?"#FFF0F0":"#F0F9F4", border:`0.5px solid ${isLimited?"#FFB4B4":"#9FE1CB"}`, borderRadius:999, padding:"5px 14px", fontSize:12 }}>
-          <span style={{ fontSize:14 }}>{isLimited ? "🚫" : remaining === 1 ? "🌙" : "🍽️"}</span>
-          <span style={{ color:isLimited?"#C04040":"#0F6E56", fontWeight:500 }}>
+        <div style={{ display:"flex", alignItems:"center", gap:6,
+          background: isLimited ? "#FFF0F0" : "#F0F9F4",
+          border:`0.5px solid ${isLimited ? "#FFB4B4" : "#9FE1CB"}`,
+          borderRadius:999, padding:"5px 14px", fontSize:12 }}>
+          <span style={{ fontSize:14 }}>{isLimited ? "🔒" : "💬"}</span>
+          <span style={{ color: isLimited ? "#C04040" : "#0F6E56", fontWeight:500 }}>
             {isLimited
-              ? "오늘 식사를 모두 했어요 (하루 2끼)"
-              : remaining === 1
-              ? "오늘 마지막 1끼 남았어요"
-              : `오늘 ${remaining}끼 남았어요 (하루 ${FREE_DAILY_LIMIT}끼 무료)`}
+              ? "무료 대화를 모두 사용했어요"
+              : remaining <= 2
+              ? `무료 대화 ${remaining}회 남았어요`
+              : `무료 체험 · ${remaining}회 대화 가능`}
           </span>
         </div>
       </div>
 
-      {isLimited ? (
-        <div style={{ background:"#FAECE7", borderRadius:14, padding:"1.5rem 1.25rem", textAlign:"center" }}>
-          <div style={{ fontSize:34, marginBottom:8 }}>✨</div>
-          <div style={{ fontSize:15, fontWeight:500, color:"#3C1508", marginBottom:6 }}>오늘 무료 식사를 모두 했어요!</div>
-          <p style={{ fontSize:13, color:"#993C1D", marginBottom:"1rem", lineHeight:1.6 }}>
-            프리미엄으로 업그레이드하면<br/>하루 횟수 제한 없이 언제든 식사해요
-          </p>
-          <div style={{ background:"#D85A30", color:"#fff", borderRadius:10, padding:"10px 20px", fontSize:13, fontWeight:500, marginBottom:8 }}>
-            월 4,900원 · 무제한 + 캐릭터 커스텀
-          </div>
-          <p style={{ fontSize:11, color:"#bbb", margin:0 }}>자정이 지나면 다시 2끼가 충전돼요 🌙</p>
-        </div>
-      ) : (
-        <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
-          {CHARS.map(c => (
-            <div key={c.id} onClick={() => onSelect(c)}
-              style={{ background:"#fff", border:"0.5px solid #e5e5e5", borderRadius:14, padding:"0.75rem 1rem", cursor:"pointer", display:"flex", gap:12, alignItems:"center", transition:"border-color 0.15s" }}
-              onMouseEnter={e => e.currentTarget.style.borderColor = c.color}
-              onMouseLeave={e => e.currentTarget.style.borderColor = "#e5e5e5"}>
-              <div style={{ flexShrink:0 }}><CharacterPortrait id={c.id} size={64} /></div>
-              <div style={{ flex:1 }}>
-                <div style={{ display:"flex", alignItems:"baseline", gap:6, marginBottom:2 }}>
-                  <span style={{ fontSize:15, fontWeight:500 }}>{c.name}</span>
-                  <span style={{ fontSize:12, color:"#999" }}>{c.age}세 · {c.job}</span>
-                </div>
-                <p style={{ fontSize:12, color:c.color, margin:"0 0 6px", fontStyle:"italic" }}>"{c.intro}"</p>
-                <div style={{ display:"flex", gap:4, flexWrap:"wrap" }}>
-                  {c.tags.map(t => (
-                    <span key={t} style={{ fontSize:10, padding:"2px 8px", borderRadius:999, background:c.bg, color:c.color, fontWeight:500, border:`0.5px solid ${c.border}` }}>{t}</span>
-                  ))}
-                </div>
+      <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
+        {CHARS.map(c => (
+          <div key={c.id} onClick={() => onSelect(c)}
+            style={{ background:"#fff", border:"0.5px solid #e5e5e5", borderRadius:14, padding:"0.75rem 1rem", cursor:"pointer", display:"flex", gap:12, alignItems:"center", transition:"border-color 0.15s" }}
+            onMouseEnter={e => e.currentTarget.style.borderColor = c.color}
+            onMouseLeave={e => e.currentTarget.style.borderColor = "#e5e5e5"}>
+            <div style={{ flexShrink:0 }}><CharacterPortrait id={c.id} size={64} /></div>
+            <div style={{ flex:1 }}>
+              <div style={{ display:"flex", alignItems:"baseline", gap:6, marginBottom:2 }}>
+                <span style={{ fontSize:15, fontWeight:500 }}>{c.name}</span>
+                <span style={{ fontSize:12, color:"#999" }}>{c.age}세 · {c.job}</span>
               </div>
-              <span style={{ color:"#ccc", fontSize:18 }}>›</span>
+              <p style={{ fontSize:12, color:c.color, margin:"0 0 6px", fontStyle:"italic" }}>"{c.intro}"</p>
+              <div style={{ display:"flex", gap:4, flexWrap:"wrap" }}>
+                {c.tags.map(t => (
+                  <span key={t} style={{ fontSize:10, padding:"2px 8px", borderRadius:999, background:c.bg, color:c.color, fontWeight:500, border:`0.5px solid ${c.border}` }}>{t}</span>
+                ))}
+              </div>
             </div>
-          ))}
-        </div>
-      )}
+            <span style={{ color:"#ccc", fontSize:18 }}>›</span>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
+
 
 // ── 음식 사진 화면 ─────────────────────────────────────────────────────────
 function FoodScreen({ char, onStart, onBack }) {
@@ -323,11 +305,13 @@ function TypingDots() {
 
 // ── 채팅 화면 ──────────────────────────────────────────────────────────────
 function ChatScreen({ char, imgB64, imgPreview, onEnd }) {
-  const [msgs, setMsgs]       = useState([]);
-  const [history, setHistory] = useState([]);
-  const [input, setInput]     = useState("");
-  const [stream, setStream]   = useState("");
-  const [busy, setBusy]       = useState(false);
+  const [msgs, setMsgs]           = useState([]);
+  const [history, setHistory]     = useState([]);
+  const [input, setInput]         = useState("");
+  const [stream, setStream]       = useState("");
+  const [busy, setBusy]           = useState(false);
+  const [showUpgrade, setShowUpgrade] = useState(false);
+  const [msgCount, setMsgCount]   = useState(getTotalMsgs);
   const chatEndRef = useRef(null);
   const inputRef   = useRef(null);
   useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior:"smooth" }); }, [msgs, stream]);
@@ -344,13 +328,26 @@ function ChatScreen({ char, imgB64, imgPreview, onEnd }) {
   }, []);
   const sendMsg = useCallback(async () => {
     const txt = input.trim(); if (!txt || busy) return;
+
+    // ✅ 무료 대화 한도 체크
+    const used = getTotalMsgs();
+    if (used >= FREE_MSG_LIMIT) {
+      setShowUpgrade(true);
+      return;
+    }
+
     setInput("");
+    const count = incrementTotalMsgs();      // 전송 시 카운트 증가
+    setMsgCount(count);
+
     const newH = [...history, { role:"user", content:txt }];
     setHistory(newH); setMsgs(prev => [...prev, { role:"user", text:txt }]); setBusy(true);
     try {
       const ai = await callClaude(char.prompt, newH, t => setStream(t));
       setHistory([...newH, { role:"assistant", content:ai }]);
       setMsgs(prev => [...prev, { role:"ai", text:ai }]);
+      // 마지막 무료 대화 후 업그레이드 안내
+      if (count >= FREE_MSG_LIMIT) setShowUpgrade(true);
     } catch { setMsgs(prev => [...prev, { role:"ai", text:"(연결 오류가 발생했어요)" }]); }
     setStream(""); setBusy(false);
     setTimeout(() => inputRef.current?.focus(), 50);
@@ -401,13 +398,35 @@ function ChatScreen({ char, imgB64, imgPreview, onEnd }) {
         {busy && !stream && msgs.length > 0 && <div style={{ display:"flex", gap:8, alignItems:"flex-end" }}><Avatar char={char}/><TypingDots/></div>}
         <div ref={chatEndRef} />
       </div>
+      {/* ✅ 업그레이드 배너 — 5회 한도 도달 시 표시 */}
+      {showUpgrade && (
+        <div style={{ padding:"0.85rem 1rem", background:"#FAECE7", borderTop:"1px solid #F0997B", flexShrink:0 }}>
+          <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:6 }}>
+            <span style={{ fontSize:20 }}>✨</span>
+            <span style={{ fontSize:13, fontWeight:500, color:"#3C1508" }}>무료 대화 {FREE_MSG_LIMIT}회를 모두 사용했어요!</span>
+          </div>
+          <p style={{ fontSize:12, color:"#993C1D", margin:"0 0 8px", lineHeight:1.5 }}>
+            프리미엄으로 업그레이드하면 횟수 제한 없이<br/>언제든 AI 친구와 식사할 수 있어요
+          </p>
+          <div style={{ display:"flex", gap:8 }}>
+            <div style={{ flex:1, padding:"8px 0", textAlign:"center", background:"#D85A30", color:"#fff", borderRadius:8, fontSize:12, fontWeight:500, cursor:"pointer" }}>
+              월 4,900원 · 무제한 구독
+            </div>
+            <button onClick={() => setShowUpgrade(false)}
+              style={{ padding:"8px 12px", background:"none", border:"0.5px solid #F0997B", borderRadius:8, fontSize:11, color:"#D85A30", cursor:"pointer" }}>
+              닫기
+            </button>
+          </div>
+        </div>
+      )}
       <div style={{ padding:"0.7rem 1rem", borderTop:"0.5px solid #e5e5e5", display:"flex", gap:8, flexShrink:0 }}>
         <input ref={inputRef} value={input} onChange={e => setInput(e.target.value)}
           onKeyDown={e => e.key==="Enter" && !e.shiftKey && sendMsg()}
-          placeholder={busy ? `${char.name} 답변 중...` : "메시지를 입력하세요"} disabled={busy}
-          style={{ flex:1, padding:"10px 14px", fontSize:14, border:`0.5px solid ${busy?"#e5e5e5":char.border}`, borderRadius:10, background:"#f5f5f5", outline:"none" }} />
-        <button onClick={sendMsg} disabled={busy||!input.trim()}
-          style={{ padding:"10px 16px", borderRadius:10, background:busy||!input.trim()?"#f0f0f0":char.color, color:busy||!input.trim()?"#bbb":"#fff", border:"none", cursor:busy||!input.trim()?"default":"pointer", fontSize:16 }}>↑</button>
+          placeholder={showUpgrade ? "프리미엄으로 업그레이드하세요 ✨" : busy ? `${char.name} 답변 중...` : "메시지를 입력하세요"}
+          disabled={busy || showUpgrade}
+          style={{ flex:1, padding:"10px 14px", fontSize:14, border:`0.5px solid ${showUpgrade?"#F0997B":busy?"#e5e5e5":char.border}`, borderRadius:10, background: showUpgrade?"#FFF5F2":"#f5f5f5", outline:"none" }} />
+        <button onClick={sendMsg} disabled={busy||!input.trim()||showUpgrade}
+          style={{ padding:"10px 16px", borderRadius:10, background:busy||!input.trim()||showUpgrade?"#f0f0f0":char.color, color:busy||!input.trim()||showUpgrade?"#bbb":"#fff", border:"none", cursor:busy||!input.trim()||showUpgrade?"default":"pointer", fontSize:16 }}>↑</button>
       </div>
     </div>
   );
@@ -497,12 +516,9 @@ export default function App() {
   const [imgPrev, setImgPrev]     = useState(null);
   const [entries, setEntries]     = useState([]);
   const [latest, setLatest]       = useState(null);
-  const [usedToday, setUsedToday] = useState(getUsedToday);
 
-  const handleSelectChar   = c => { setChar(c); setScreen("food"); };
+  const handleSelectChar = c => { setChar(c); setScreen("food"); };
   const handleStartSession = (b64, preview) => {
-    const count = incrementUsage();
-    setUsedToday(count);
     setImgB64(b64); setImgPrev(preview); setScreen("chat");
   };
   const handleEndSession = async msgs => {
@@ -535,7 +551,7 @@ export default function App() {
 
   return (
     <div style={{ maxWidth:420, margin:"0 auto", fontFamily:"-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo',sans-serif", minHeight:"100vh", background:"#fff" }}>
-      {screen==="select"      && <SelectScreen      onSelect={handleSelectChar} onRestaurants={() => setScreen("restaurants")} usedToday={usedToday} />}
+      {screen==="select"      && <SelectScreen      onSelect={handleSelectChar} onRestaurants={() => setScreen("restaurants")} />}
       {screen==="restaurants" && <RestaurantsScreen  onBack={() => setScreen("select")} />}
       {screen==="food"        && <FoodScreen         char={char} onStart={handleStartSession} onBack={() => setScreen("select")} />}
       {screen==="chat"        && <ChatScreen         char={char} imgB64={imgB64} imgPreview={imgPrev} onEnd={handleEndSession} />}
