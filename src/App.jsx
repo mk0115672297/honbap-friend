@@ -75,7 +75,12 @@ function RestaurantsScreen({ onBack }) {
   const { restaurants, loading, error, fetch: fetchRests } = useRestaurants();
   useEffect(() => { fetchRests(); }, []);
   return (
-    <div style={{ display:"flex", flexDirection:"column", height:"100dvh", maxHeight:700 }}>
+    <div style={{
+      position:"fixed", top:0, left:0, right:0, bottom:0,
+      display:"flex", flexDirection:"column",
+      maxWidth:420, margin:"0 auto",
+      background:"#fff", zIndex:100,
+    }}>
       <div style={{ padding:"0.85rem 1rem", borderBottom:"0.5px solid #e5e5e5", display:"flex", alignItems:"center", gap:10, flexShrink:0 }}>
         <button onClick={onBack} style={{ background:"none", border:"none", cursor:"pointer", fontSize:20, color:"#888", padding:0, lineHeight:1 }}>←</button>
         <div>
@@ -362,7 +367,12 @@ function ChatScreen({ char, imgB64, imgPreview, onEnd }) {
     setTimeout(() => inputRef.current?.focus(), 50);
   }, [input, busy, history, char]);
   return (
-    <div style={{ display:"flex", flexDirection:"column", height:"100vh", maxHeight:700 }}>
+    <div style={{
+      position:"fixed", top:0, left:0, right:0, bottom:0,
+      display:"flex", flexDirection:"column",
+      maxWidth:420, margin:"0 auto",
+      background:"#fff", zIndex:100,
+    }}>
       <div style={{ padding:"0.7rem 1rem", borderBottom:"0.5px solid #e5e5e5", display:"flex", alignItems:"center", justifyContent:"space-between", flexShrink:0 }}>
         <div style={{ display:"flex", alignItems:"center", gap:10 }}>
           <div style={{ flexShrink:0 }}><CharacterPortrait id={char.id} size={42} /></div>
@@ -448,7 +458,12 @@ function DiaryScreen({ char, entry, entries, onReset }) {
   const { restaurants, loading, fetch: fetchRests } = useRestaurants();
   useEffect(() => { fetchRests(); }, []);
   return (
-    <div style={{ display:"flex", flexDirection:"column", height:"100vh", maxHeight:700 }}>
+    <div style={{
+      position:"fixed", top:0, left:0, right:0, bottom:0,
+      display:"flex", flexDirection:"column",
+      maxWidth:420, margin:"0 auto",
+      background:"#fff", zIndex:100,
+    }}>
       <div style={{ padding:"0.85rem 1rem", borderBottom:"0.5px solid #e5e5e5", display:"flex", alignItems:"center", gap:10, flexShrink:0 }}>
         <button onClick={onReset} style={{ background:"none", border:"none", cursor:"pointer", fontSize:20, color:"#888", padding:0 }}>←</button>
         <h2 style={{ fontSize:16, fontWeight:500, margin:0 }}>식사 완료 🎉</h2>
