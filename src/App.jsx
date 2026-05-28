@@ -99,14 +99,24 @@ function RestaurantsScreen({ onBack }) {
           </div>
         )}
         {!loading && error && (
-          <div style={{ textAlign:"center", padding:"2.5rem 1rem" }}>
-            <div style={{ fontSize:36, marginBottom:8 }}>📍</div>
-            <p style={{ fontSize:14, color:"#555", marginBottom:4 }}>위치 정보를 가져올 수 없어요</p>
-            <p style={{ fontSize:12, color:"#bbb", marginBottom:"1rem" }}>브라우저에서 위치 권한을 허용해 주세요</p>
-            <button onClick={fetchRests}
-              style={{ padding:"8px 20px", background:"#1D9E75", color:"#fff", border:"none", borderRadius:8, cursor:"pointer", fontSize:13 }}>
-              다시 시도
-            </button>
+          <div style={{ padding:"1.5rem 1rem" }}>
+            <div style={{ textAlign:"center", marginBottom:"1rem" }}>
+              <div style={{ fontSize:36, marginBottom:8 }}>📍</div>
+              <p style={{ fontSize:14, color:"#555", fontWeight:500, marginBottom:6 }}>위치를 가져올 수 없어요</p>
+              <p style={{ fontSize:12, color:"#888", lineHeight:1.6, margin:"0 0 1rem" }}>{error}</p>
+              <button onClick={fetchRests}
+                style={{ padding:"9px 24px", background:"#1D9E75", color:"#fff", border:"none", borderRadius:8, cursor:"pointer", fontSize:13, fontWeight:500 }}>
+                🔄 다시 시도
+              </button>
+            </div>
+            <div style={{ background:"#F0F9F4", borderRadius:12, padding:"0.9rem 1rem", marginTop:"0.75rem" }}>
+              <p style={{ fontSize:12, color:"#0F6E56", margin:"0 0 6px", fontWeight:500 }}>📱 위치 허용 방법</p>
+              <p style={{ fontSize:11, color:"#555", margin:0, lineHeight:1.7 }}>
+                Chrome: 주소창 왼쪽 🔒 → 위치 → <b>허용</b><br/>
+                Safari: 설정 → Safari → 위치 → <b>허용</b><br/>
+                iPhone: 설정 → 개인 정보 보호 → 위치 서비스 → Safari → <b>앱 사용 중 허용</b>
+              </p>
+            </div>
           </div>
         )}
         {!loading && !error && restaurants.length === 0 && (
