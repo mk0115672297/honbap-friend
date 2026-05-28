@@ -381,7 +381,7 @@ function ChatScreen({ char, imgB64, imgPreview, onEnd }) {
       position:"fixed", top:0, left:0, right:0,
       height: chatH,
       display:"flex", flexDirection:"column",
-      maxWidth:420, margin:"0 auto",
+      maxWidth:420, margin:0,
       background:"#fff", zIndex:100,
       overflow:"hidden",
     }}>
@@ -586,7 +586,7 @@ export default function App() {
   };
 
   return (
-    <div style={{ maxWidth:420, margin:"0 auto", fontFamily:"-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo',sans-serif", minHeight:"100vh", background:"#fff" }}>
+    <div style={{ maxWidth:420, margin:0, fontFamily:"-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo',sans-serif", minHeight:"100vh", background:"#fff" }}>
       {screen==="select"      && <SelectScreen      onSelect={handleSelectChar} onRestaurants={() => setScreen("restaurants")} />}
       {screen==="restaurants" && <RestaurantsScreen  onBack={() => setScreen("select")} />}
       {screen==="food"        && <FoodScreen         char={char} onStart={handleStartSession} onBack={() => setScreen("select")} />}
