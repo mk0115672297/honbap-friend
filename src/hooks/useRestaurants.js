@@ -6,18 +6,32 @@ import { useState, useCallback } from "react"
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL
 
+// 서울 중심부 기본 좌표 (위치 거부 시 폴백)
+const SEOUL_DEFAULT = { lat: 37.5665, lng: 126.9780 }
+
 function getLocation() {
   return new Promise((resolve, reject) => {
     if (!navigator.geolocation) {
-      reject(new Error("위치 서비스를 지원하지 않는 브라우저입니다."))
+      reject(new Error("NO_GEOLOCATION"))
       return
     }
     navigator.geolocation.getCurrentPosition(
       pos => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-      err => reject(err),
-      { timeout: 6000, maximumAge: 60000 }
+      err => {
+        // 1: PERMISSION_DENIED, 2: POSITION_UNAVAILABLE, 3: TIMEOUT
+        reject(new Error("CODE_" + err.code))
+      },
+      { timeout: 10000, maximumAge: 300000, enableHighAccuracy: false }
     )
   })
+}
+
+function getErrorMessage(msg) {
+  if (msg.includes("CODE_1")) return "위치 권한이 거부됐어요. 브라우저 주소창 왼쪽 🔒에서 위치를 허용해 주세요."
+  if (msg.includes("CODE_2")) return "위치를 확인할 수 없어요. 잠시 후 다시 시도해 주세요."
+  if (msg.includes("CODE_3")) return "위치 요청이 너무 오래 걸려요. 다시 시도해 주세요."
+  if (msg.includes("NO_GEOLOCATION")) return "이 브라우저는 위치 서비스를 지원하지 않아요."
+  return msg
 }
 
 async function searchKakao(query, lat, lng, radius = 1000) {
@@ -78,7 +92,7 @@ export function useRestaurants() {
         results.map(formatRestaurant).sort((a, b) => a.distanceNum - b.distanceNum)
       )
     } catch (err) {
-      setError(err.message)
+      setError(getErrorMessage(err.message))
       setRestaurants([])
     } finally {
       setLoading(false)
