@@ -22,9 +22,8 @@ function getErrorMessage(msg) {
 }
 
 async function searchNearbyRestaurants(lat, lng, radius = 500, size = 15) {
-  // ✅ kpath 쿼리 파라미터로 카카오 API 경로 전달 (서브패스 문제 해결)
   const params = new URLSearchParams({
-    kpath: "/v2/local/search/category.json",
+    path: "/v2/local/search/category.json",
     category_group_code: "FD6",
     y: lat, x: lng, radius, size,
     sort: "distance",
@@ -57,9 +56,9 @@ function formatRestaurant(doc) {
 
 export function useRestaurants() {
   const [restaurants, setRestaurants] = useState([])
-  const [loading,     setLoading]     = useState(false)
-  const [error,       setError]       = useState(null)
-  const [location,    setLocation]    = useState(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState(null)
+  const [location, setLocation] = useState(null)
 
   const fetchRestaurants = useCallback(async () => {
     setLoading(true); setError(null)
