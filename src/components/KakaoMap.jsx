@@ -1,41 +1,114 @@
-// src/components/KakaoMap.jsx
-// 카카오맵 딥링크 버튼 — SDK/iframe 없이 확실하게 동작
-export default function KakaoMap({ restaurants = [], center, height = 120 }) {
-  if (!center) return null
+import { useState, useEffect } from "react";
 
-  const lat = center.lat
-  const lng = center.lng
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 
-  // 카카오맵 웹 URL — 현재 위치 근처 음식점 검색
-  const kakaoMapUrl = `https://map.kakao.com/?q=${encodeURIComponent('음식점')}&p=${lng},${lat}`
+/**
+ * KakaoMap — 카카오 정적 지도 이미지 컴포넌트
+ * Props:
+ *   restaurants  {Array}   식당 배열 [{ lat, lng }, ...]
+ *   center       {Object}  중심/내 위치 { lat, lng }
+ *   height       {number}  이미지 높이px (기본 220)
+ */
+export default function KakaoMap({ restaurants = [], center, height = 220 }) {
+  const [imgSrc, setImgSrc] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [containerWidth, setContainerWidth] = useState(375);
 
-  // 주변 식당 개수
-  const count = restaurants.length
+  useEffect(() => {
+    const update = () => setContainerWidth(Math.min(window.innerWidth, 640));
+    update();
+    window.addEventListener("resize", update);
+    return () => window.removeEventListener("resize", update);
+  }, []);
+
+  useEffect(() => {
+    if (!center?.lat || !center?.lng) return;
+
+    let objectUrl = null;
+
+    const fetchMap = async () => {
+      setLoading(true);
+      setError(null);
+
+      try {
+        // 마커 파라미터 구성
+        const markerParts = [];
+
+        // 식당 마커 (빨간 기본)
+        restaurants.forEach(({ lat, lng }) => {
+          if (lat && lng) markerParts.push(`default,${lng},${lat}`);
+        });
+
+        // 내 위치 마커 (파란색)
+        markerParts.push(`blue,${center.lng},${center.lat}`);
+
+        const params = new URLSearchParams({
+          path: "/v2/maps/api/staticmap",
+          center: `${center.lng},${center.lat}`,
+          level: "4",
+          w: String(containerWidth),
+          h: String(height),
+        });
+
+        if (markerParts.length > 0) {
+          params.append("marker", markerParts.join("|"));
+        }
+
+        const proxyUrl = `${SUPABASE_URL}/functions/v1/kakao-proxy?${params.toString()}`;
+        const res = await fetch(proxyUrl);
+        if (!res.ok) throw new Error(`지도 로드 실패: ${res.status}`);
+
+        const blob = await res.blob();
+        objectUrl = URL.createObjectURL(blob);
+        setImgSrc(objectUrl);
+      } catch (err) {
+        console.error("[KakaoMap]", err);
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchMap();
+
+    return () => {
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [center?.lat, center?.lng, restaurants, containerWidth, height]);
+
+  if (!center?.lat || !center?.lng) return null;
 
   return (
-    <div style={{
-      width: "100%",
-      height,
-      background: "linear-gradient(135deg, #FAF3E0 0%, #FEE9A0 100%)",
-      borderRadius: 12,
-      marginBottom: 10,
-      display: "flex",
-      flexDirection: "column",
-      alignItems: "center",
-      justifyContent: "center",
-      gap: 8,
-      cursor: "pointer",
-      border: "1px solid #FEE500",
-    }}
-      onClick={() => window.open(kakaoMapUrl, "_blank")}
+    <div
+      style={{
+        width: "100%",
+        height: `${height}px`,
+        borderRadius: "12px",
+        overflow: "hidden",
+        background: "#e8e8e8",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        marginBottom: 10,
+        position: "relative",
+      }}
     >
-      <div style={{ fontSize: 32 }}>🗺️</div>
-      <div style={{ fontSize: 14, fontWeight: 600, color: "#3A1D00" }}>
-        카카오맵에서 지도 보기
-      </div>
-      <div style={{ fontSize: 12, color: "#7A5C00" }}>
-        {count > 0 ? `주변 ${count}곳 발견 · 탭해서 카카오맵 열기` : "탭해서 카카오맵 열기"}
-      </div>
+      {loading && (
+        <div style={{ color: "#888", fontSize: 13 }}>지도 불러오는 중...</div>
+      )}
+      {error && !loading && (
+        <div style={{ color: "#e55", fontSize: 12, padding: 8, textAlign: "center" }}>
+          지도를 불러오지 못했습니다
+        </div>
+      )}
+      {imgSrc && !loading && (
+        <img
+          src={imgSrc}
+          alt="주변 맛집 지도"
+          style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+        />
+      )}
     </div>
-  )
+  );
 }
