@@ -10,8 +10,8 @@ const CHAT_MODEL  = "claude-haiku-4-5-20251001"
 const DIARY_MODEL = "claude-haiku-4-5-20251001"
 
 function getTotalMsgs() {
-  try { return parseInt(localStorage.getItem("honbap_total_msgs") ||h "0") } 
-  catch { return 0 }
+    try { return parseInt(localStorage.getItem("honbap_total_msgs") || "0") }
+      catch { return 0 }
 }
 function incrementTotalMsgs() {
   try {
@@ -46,7 +46,7 @@ async function callClaude(system, messages, onChunk, model = CHAT_MODEL) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       model,
-      max_tokens: 300,h
+      max_tokens: 300,
       system: [{ type:"text", text:system, cache_control:{ type:"ephemeral" } }],
       stream: true,
       messages,
