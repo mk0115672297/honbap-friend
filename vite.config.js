@@ -1,5 +1,6 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import { appsInToss } from '@apps-in-toss/web-framework/plugins'
 import { readFileSync } from 'fs'
 import { resolve } from 'path'
 
@@ -23,8 +24,6 @@ const timestamp    = new Date().toISOString().replace(/[-:T.Z]/g,'').slice(0,14)
 const anthropicProxy = {
   name: 'anthropic-proxy',
   configureServer(server) {
-
-    // ── Anthropic API 프록시 ──────────────────────────────────────────────
     server.middlewares.use('/api/claude', (req, res) => {
       const chunks = []
       req.on('data', chunk => chunks.push(Buffer.from(chunk)))
@@ -61,7 +60,6 @@ const anthropicProxy = {
       })
     })
 
-    // ── 카카오 로컬 API 프록시 (CORS 우회) ───────────────────────────────
     server.middlewares.use('/api/kakao', (req, res) => {
       const chunks = []
       req.on('data', chunk => chunks.push(Buffer.from(chunk)))
@@ -86,12 +84,20 @@ const anthropicProxy = {
         }
       })
     })
-
   },
 }
 
+const ait = appsInToss({
+  brand: {
+    displayName: '혼밥프렌드',
+    primaryColor: '#1D9E75',
+    icon: 'https://honbap-friend.vercel.app/icons.svg',
+  },
+  permissions: [],
+})
+
 export default defineConfig({
-  plugins: [react(), anthropicProxy],
+  plugins: [react(), anthropicProxy, ...ait],
   server: { port: 5174 },
   build: {
     outDir: 'dist',
