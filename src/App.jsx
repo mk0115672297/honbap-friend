@@ -10,7 +10,7 @@ const CHAT_MODEL  = "claude-haiku-4-5-20251001"
 const DIARY_MODEL = "claude-haiku-4-5-20251001"
 
 function getTotalMsgs() {
-  try { return parseInt(localStorage.getItem("honbap_total_msgs") || "0") } 
+  try { return parseInt(localStorage.getItem("honbap_total_msgs") ||h "0") } 
   catch { return 0 }
 }
 function incrementTotalMsgs() {
@@ -46,7 +46,7 @@ async function callClaude(system, messages, onChunk, model = CHAT_MODEL) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       model,
-      max_tokens: 300,
+      max_tokens: 300,h
       system: [{ type:"text", text:system, cache_control:{ type:"ephemeral" } }],
       stream: true,
       messages,
@@ -72,7 +72,7 @@ async function callClaude(system, messages, onChunk, model = CHAT_MODEL) {
 
 // ── 근처 맛집 화면 ─────────────────────────────────────────────────────────
 function RestaurantsScreen({ onBack }) {
-  const { restaurants, loading, error, fetch: fetchRests } = useRestaurants();
+  const { restaurants, loading, error, location, fetch: fetchRests } = useRestaurants();
   useEffect(() => { fetchRests(); }, []);
   return (
     <div style={{
