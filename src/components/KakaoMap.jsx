@@ -44,7 +44,7 @@ export default function KakaoMap({ restaurants = [], center, height = 220 }) {
         markerParts.push(`blue,${center.lng},${center.lat}`);
 
         const params = new URLSearchParams({
-          path: "/v2/maps/api/staticmap",
+                    path: "/v2/maps/staticmap.png",
           center: `${center.lng},${center.lat}`,
           level: "4",
           w: String(containerWidth),
