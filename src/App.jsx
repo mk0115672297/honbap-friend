@@ -1,8 +1,59 @@
-import { useState, useRef, useEffect, useCallback } from "react";
+﻿import { useState, useRef, useEffect, useCallback } from "react";
 import { useRestaurants } from "./hooks/useRestaurants";
 import RestaurantCard from "./components/RestaurantCard";
 import CharacterPortrait from "./components/CharacterPortrait"
 import KakaoMap from "./components/KakaoMap";
+// ── 토스 로그인 ────────────────────────────────────────────────────────────
+async function tossLogin() {
+  try {
+    const { appLogin } = await import("@apps-in-toss/web-bridge");
+    const { authorizationCode, referrer } = await appLogin();
+    const res = await fetch(
+      `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/toss-auth`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ authorizationCode, referrer }),
+      }
+    );
+    return await res.json();
+  } catch (e) {
+    console.warn("토스 로그인 실패 (토스앱 외부 환경):", e);
+    return null;
+  }
+}
+
+// ── 토스 인앱결제 (자동갱신 구독 전용 API) ────────────────────────────────────
+async function handleIAPPurchase(userKey, onSuccess) {
+  try {
+    const { IAP } = await import("@apps-in-toss/web-framework");
+    const SKU = "sub.sxj.mpvy93vw.5b011941a1";
+    const cleanup = IAP.createSubscriptionPurchaseOrder({
+      options: {
+        sku: SKU,
+        processProductGrant: async ({ orderId, subscriptionId }) => {
+          try {
+            const res = await fetch(
+              `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/iap-verify`,
+              {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ orderId, subscriptionId, userKey }),
+              }
+            );
+            const data = await res.json();
+            if (data.ok) { onSuccess(); return true; }
+            return false;
+          } catch { return false; }
+        },
+      },
+      onEvent: (event) => { if (event.type === "success") cleanup(); },
+      onError: (error) => { console.error("IAP error:", error); cleanup(); },
+    });
+  } catch (e) {
+    console.warn("IAP 실패 (토스앱 외부 환경):", e);
+  }
+}
 
 // ── 비용 절감 설정 ─────────────────────────────────────────────────────────
 const FREE_MSG_LIMIT = 5          // 무료 대화 횟수 (누적)
@@ -307,7 +358,7 @@ function TypingDots() {
 }
 
 // ── 채팅 화면 ──────────────────────────────────────────────────────────────
-function ChatScreen({ char, imgB64, imgPreview, onEnd }) {
+function ChatScreen({ char, imgB64, imgPreview, onEnd, tossUser }) {
   const [msgs, setMsgs]               = useState([]);
   const [history, setHistory]         = useState([]);
   const [input, setInput]             = useState("");
@@ -316,6 +367,9 @@ function ChatScreen({ char, imgB64, imgPreview, onEnd }) {
   const [showUpgrade, setShowUpgrade] = useState(false);
   const [msgCount, setMsgCount]       = useState(getTotalMsgs);
   const [chatH, setChatH]             = useState(window.innerHeight);
+  const [chatImg, setChatImg]         = useState(null);
+  const [chatImgB64, setChatImgB64]   = useState(null);
+  const chatImgRef                    = useRef(null);
   const chatEndRef = useRef(null);
   const inputRef   = useRef(null);
 
@@ -364,14 +418,18 @@ function ChatScreen({ char, imgB64, imgPreview, onEnd }) {
     const count = incrementTotalMsgs();      // 전송 시 카운트 증가
     setMsgCount(count);
 
-    const newH = [...history, { role:"user", content:txt }];
-    setHistory(newH); setMsgs(prev => [...prev, { role:"user", text:txt }]); setBusy(true);
+    const userContent = chatImgB64
+      ? [{ type:"image", source:{ type:"base64", media_type:"image/jpeg", data:chatImgB64 } }, { type:"text", text:txt }]
+      : txt;
+    const newH = [...history, { role:"user", content:userContent }];
+    setHistory(newH); setMsgs(prev => [...prev, { role:"user", text:txt, img:chatImg }]); setBusy(true);
+    setChatImg(null); setChatImgB64(null);
     try {
       const ai = await callClaude(char.prompt, newH, t => setStream(t));
       setHistory([...newH, { role:"assistant", content:ai }]);
       setMsgs(prev => [...prev, { role:"ai", text:ai }]);
       // 마지막 무료 대화 후 업그레이드 안내
-      if (count >= FREE_MSG_LIMIT) setShowUpgrade(true);
+      if (count >= FREE_MSG_LIMIT && !(tossUser?.isPremium)) setShowUpgrade(true);
     } catch { setMsgs(prev => [...prev, { role:"ai", text:"(연결 오류가 발생했어요)" }]); }
     setStream(""); setBusy(false);
     setTimeout(() => inputRef.current?.focus(), 50);
@@ -415,9 +473,11 @@ function ChatScreen({ char, imgB64, imgPreview, onEnd }) {
               <Avatar char={char}/>
               <div style={{ maxWidth:"72%", padding:"10px 14px", fontSize:14, lineHeight:1.55, background:"#f5f5f5", borderRadius:"16px 16px 16px 4px" }}>{m.text}</div>
             </div>
-          : <div key={i} style={{ display:"flex", justifyContent:"flex-end" }}>
+          : <div key={i} style={{ display:"flex", justifyContent:"flex-end", flexDirection:"column", alignItems:"flex-end" }}>
+              {m.img && <img src={m.img} style={{ maxWidth:"72%", borderRadius:"12px 12px 4px 12px", marginBottom:4, maxHeight:180, objectFit:"cover" }} />}
               <div style={{ maxWidth:"72%", padding:"10px 14px", fontSize:14, lineHeight:1.55, background:char.color, color:"#fff", borderRadius:"16px 16px 4px 16px" }}>{m.text}</div>
             </div>
+
         )}
         {stream && (
           <div style={{ display:"flex", gap:8, alignItems:"flex-end" }}>
@@ -441,8 +501,8 @@ function ChatScreen({ char, imgB64, imgPreview, onEnd }) {
             프리미엄으로 업그레이드하면 횟수 제한 없이<br/>언제든 AI 친구와 식사할 수 있어요
           </p>
           <div style={{ display:"flex", gap:8 }}>
-            <div style={{ flex:1, padding:"8px 0", textAlign:"center", background:"#D85A30", color:"#fff", borderRadius:8, fontSize:12, fontWeight:500, cursor:"pointer" }}>
-              월 4,900원 · 무제한 구독
+            <div onClick={() => handleIAPPurchase(tossUser?.userKey, () => { setShowUpgrade(false); setTossUser(prev => ({ ...prev, isPremium: true })); })} style={{ flex:1, padding:"8px 0", textAlign:"center", background:"#D85A30", color:"#fff", borderRadius:8, fontSize:12, fontWeight:500, cursor:"pointer" }}>
+              월 4,906원 · 무제한 구독 ✨
             </div>
             <button onClick={() => setShowUpgrade(false)}
               style={{ padding:"8px 12px", background:"none", border:"0.5px solid #F0997B", borderRadius:8, fontSize:11, color:"#D85A30", cursor:"pointer" }}>
@@ -451,7 +511,25 @@ function ChatScreen({ char, imgB64, imgPreview, onEnd }) {
           </div>
         </div>
       )}
+      {chatImg && (
+        <div style={{ padding:"0.4rem 1rem", borderTop:"0.5px solid #e5e5e5", background:"#f9f9f9", display:"flex", alignItems:"center", gap:8, flexShrink:0 }}>
+          <img src={chatImg} style={{ height:48, width:48, objectFit:"cover", borderRadius:8 }} />
+          <span style={{ fontSize:12, color:"#888", flex:1 }}>📸 사진 첨부됨</span>
+          <button onClick={() => { setChatImg(null); setChatImgB64(null); }}
+            style={{ background:"none", border:"none", fontSize:16, color:"#bbb", cursor:"pointer" }}>×</button>
+        </div>
+      )}
       <div style={{ padding:"0.7rem 1rem", borderTop:"0.5px solid #e5e5e5", display:"flex", gap:8, flexShrink:0 }}>
+        <input type="file" accept="image/*" capture="environment" ref={chatImgRef}
+          onChange={e => {
+            const f = e.target.files[0]; if (!f) return;
+            const r = new FileReader();
+            r.onload = ev => { setChatImg(ev.target.result); setChatImgB64(ev.target.result.split(",")[1]); };
+            r.readAsDataURL(f);
+            e.target.value = "";
+          }} style={{ display:"none" }} />
+        <button onClick={() => chatImgRef.current.click()} disabled={showUpgrade}
+          style={{ padding:"10px 12px", borderRadius:10, background:showUpgrade?"#f0f0f0":"#f5f5f5", border:`0.5px solid ${showUpgrade?"#e5e5e5":char.border}`, cursor:showUpgrade?"default":"pointer", fontSize:18, flexShrink:0 }}>📷</button>
         <input ref={inputRef} value={input} onChange={e => setInput(e.target.value)}
           onFocus={handleInputFocus}
           onKeyDown={e => e.key==="Enter" && !e.shiftKey && sendMsg()}
@@ -552,7 +630,32 @@ export default function App() {
   const [imgPrev, setImgPrev]     = useState(null);
   const [entries, setEntries]     = useState([]);
   const [latest, setLatest]       = useState(null);
+  const [tossUser, setTossUser]   = useState(null);
 
+  useEffect(() => {
+    tossLogin().then(user => {
+      if (user?.ok) {
+        setTossUser(user);
+        localStorage.setItem("honbap_user_key", String(user.userKey));
+        localStorage.setItem("honbap_total_msgs", String(user.msgCount ?? 0));
+      }
+    });
+  }, []);
+
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const charParam = params.get("char");
+      if (charParam) {
+        const found = CHARS.find(c => c.id === charParam);
+        if (found) {
+          setChar(found);
+          setScreen("food");
+        }
+      }
+    } catch {}
+  }, []);
+  
   const handleSelectChar = c => { setChar(c); setScreen("food"); };
   const handleStartSession = (b64, preview) => {
     setImgB64(b64); setImgPrev(preview); setScreen("chat");
@@ -590,8 +693,19 @@ export default function App() {
       {screen==="select"      && <SelectScreen      onSelect={handleSelectChar} onRestaurants={() => setScreen("restaurants")} />}
       {screen==="restaurants" && <RestaurantsScreen  onBack={() => setScreen("select")} />}
       {screen==="food"        && <FoodScreen         char={char} onStart={handleStartSession} onBack={() => setScreen("select")} />}
-      {screen==="chat"        && <ChatScreen         char={char} imgB64={imgB64} imgPreview={imgPrev} onEnd={handleEndSession} />}
+      {screen==="chat"        && <ChatScreen         char={char} imgB64={imgB64} imgPreview={imgPrev} onEnd={handleEndSession} tossUser={tossUser} />}
       {screen==="diary"       && <DiaryScreen        char={char} entry={latest} entries={entries} onReset={handleReset} />}
     </div>
   );
 }
+
+
+
+
+
+
+
+
+
+
+
