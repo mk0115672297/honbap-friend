@@ -55,6 +55,53 @@ async function handleIAPPurchase(userKey, onSuccess) {
   }
 }
 
+// ── 앱인토스 인앱광고 ──────────────────────────────────────────────────────────
+const AD_BANNER_1   = "ait.v2.live.56cd06ee771941f6"; // 배너광고 1 (홈 하단)
+const AD_BANNER_2   = "ait.v2.live.31167a09c9a0464a"; // 배너광고 2 (채팅목록 하단)
+const AD_INTERSTITIAL = "ait.v2.live.cda8bf861ca2441a"; // 전면광고 (채팅 시작 시)
+const AD_REWARDED   = "ait.v2.live.8757a78ba4264d28"; // 리워드광고 (대화 추가 보상)
+
+// 전면광고
+async function showInterstitialAd() {
+  try {
+    const { Ad } = await import("@apps-in-toss/web-framework");
+    const ad = await Ad.loadInterstitial({ adUnitId: AD_INTERSTITIAL });
+    await ad.show();
+  } catch (e) {
+    console.warn("전면광고 실패:", e);
+  }
+}
+
+// 리워드광고 (완료 시 onRewarded 콜백 실행)
+async function showRewardedAd(onRewarded) {
+  try {
+    const { Ad } = await import("@apps-in-toss/web-framework");
+    const ad = await Ad.loadRewarded({ adUnitId: AD_REWARDED });
+    ad.onReward = () => { onRewarded(); };
+    await ad.show();
+  } catch (e) {
+    console.warn("리워드광고 실패:", e);
+  }
+}
+
+// 배너광고 컴포넌트
+function BannerAd({ adUnitId, containerId }) {
+  useEffect(() => {
+    let instance = null;
+    (async () => {
+      try {
+        const { Ad } = await import("@apps-in-toss/web-framework");
+        instance = await Ad.loadBanner({ adUnitId, containerId });
+        await instance.show();
+      } catch (e) {
+        console.warn("배너광고 실패:", e);
+      }
+    })();
+    return () => { if (instance?.destroy) instance.destroy(); };
+  }, [adUnitId, containerId]);
+  return <div id={containerId} style={{ width: "100%", minHeight: 50, background: "transparent" }} />;
+}
+
 // ── 비용 절감 설정 ─────────────────────────────────────────────────────────
 const FREE_MSG_LIMIT = 5          // 무료 대화 횟수 (누적)
 const CHAT_MODEL  = "claude-haiku-4-5-20251001"
@@ -281,6 +328,10 @@ function SelectScreen({ onSelect, onRestaurants }) {
           </div>
         ))}
       </div>
+      {/* 배너광고 1 */}
+      <div style={{ marginTop: 12 }}>
+        <BannerAd adUnitId={AD_BANNER_1} containerId="honbap-banner-home" />
+      </div>
     </div>
   );
 }
@@ -500,7 +551,7 @@ function ChatScreen({ char, imgB64, imgPreview, onEnd, tossUser }) {
           <p style={{ fontSize:12, color:"#993C1D", margin:"0 0 8px", lineHeight:1.5 }}>
             프리미엄으로 업그레이드하면 횟수 제한 없이<br/>언제든 AI 친구와 식사할 수 있어요
           </p>
-          <div style={{ display:"flex", gap:8 }}>
+          <div style={{ display:"flex", gap:8, marginBottom:8 }}>
             <div onClick={() => handleIAPPurchase(tossUser?.userKey, () => { setShowUpgrade(false); setTossUser(prev => ({ ...prev, isPremium: true })); })} style={{ flex:1, padding:"8px 0", textAlign:"center", background:"#D85A30", color:"#fff", borderRadius:8, fontSize:12, fontWeight:500, cursor:"pointer" }}>
               월 4,906원 · 무제한 구독 ✨
             </div>
@@ -508,6 +559,17 @@ function ChatScreen({ char, imgB64, imgPreview, onEnd, tossUser }) {
               style={{ padding:"8px 12px", background:"none", border:"0.5px solid #F0997B", borderRadius:8, fontSize:11, color:"#D85A30", cursor:"pointer" }}>
               닫기
             </button>
+          </div>
+          {/* 리워드광고 버튼 */}
+          <div onClick={() => showRewardedAd(() => {
+            const current = parseInt(localStorage.getItem("honbap_total_msgs") || "0");
+            localStorage.setItem("honbap_total_msgs", String(Math.max(0, current - 3)));
+            setMsgCount(Math.max(0, current - 3));
+            setShowUpgrade(false);
+          })} style={{ width:"100%", padding:"8px 0", textAlign:"center",
+            background:"#fff", border:"1px solid #F0997B", borderRadius:8,
+            fontSize:12, fontWeight:500, color:"#D85A30", cursor:"pointer" }}>
+            📺 광고 보고 대화 3회 추가받기
           </div>
         </div>
       )}
@@ -617,6 +679,10 @@ function DiaryScreen({ char, entry, entries, onReset }) {
         <button onClick={onReset} style={{ width:"100%", padding:12, fontSize:14, fontWeight:500, background:"#D85A30", color:"#fff", border:"none", borderRadius:10, cursor:"pointer" }}>
           다시 식사하기 🍴
         </button>
+        {/* 배너광고 2 */}
+        <div style={{ marginTop: 10 }}>
+          <BannerAd adUnitId={AD_BANNER_2} containerId="honbap-banner-diary" />
+        </div>
       </div>
     </div>
   );
@@ -657,7 +723,8 @@ export default function App() {
   }, []);
   
   const handleSelectChar = c => { setChar(c); setScreen("food"); };
-  const handleStartSession = (b64, preview) => {
+  const handleStartSession = async (b64, preview) => {
+    await showInterstitialAd();
     setImgB64(b64); setImgPrev(preview); setScreen("chat");
   };
   const handleEndSession = async msgs => {
